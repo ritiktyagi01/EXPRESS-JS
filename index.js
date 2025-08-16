@@ -10,7 +10,14 @@ const port = 3000
 app.use('/user', router);
 import { aboutcontroller, getid, searchcontroller, usercontroller } from './controller.js';
 import { person } from './model/Person.js';
+import cookieparser from 'cookie-parser'
 
+app.use(cookieparser())
+app.get('/',(req,res)=>{
+  console.log(req.cookies)
+  res.cookie('name','express')
+  res.send('cookies started')
+})
 
 
 //DATa base work here 
