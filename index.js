@@ -11,13 +11,91 @@ app.use('/user', router);
 import { aboutcontroller, getid, searchcontroller, usercontroller } from './controller.js';
 import { person } from './model/Person.js';
 import cookieparser from 'cookie-parser'
+import session from 'express-session';
+
 
 app.use(cookieparser())
 app.get('/',(req,res)=>{
-  console.log(req.cookies)
-  res.cookie('name','express')
+  console.log(req.cookies,{maxage:3600000})
+  res.cookie('name','sumit',{maxAge:3600000})
   res.send('cookies started')
 })
+app.get('/fetch',(req,res)=>{
+  console.log(req.cookies);
+  res.send('cokkies fetched');
+
+})
+//To delete the cookies 
+app.get('/removecookies',(req,res)=>{
+  //res.clearCookie('name'); // Corrected method name
+  //use clearCookie insteas of clearCookies
+  res.clearCookie('name');
+  res.send('cookies removed');
+})
+
+
+//session middleware
+app.use(session({
+  secret :'sample-secret',
+  resave:false,
+  saveuninitialized : true
+}))
+app.get('/visit',(req,res)=>{
+  if(req.session.pageviews){
+    req.session.pageviews++;
+    res.send("You visited this page " + req.session.pageviews + " times");
+  }else{
+    req.session.pageviews = 1;
+    res.send("Welcome to this page for the first time!");
+  }
+})
+//session delete
+app.get('/delete-session',(req,res)=>{
+  //we have two ways to delete session
+  //1. req.session = null;
+  //2. req.session.destroy(callback)  
+
+  req.session.destroy( (err) => {
+    if (err) {
+      return res.status(500).send('Could not delete session');
+    }
+    console.log('Session deleted successfully!');
+  })
+  res.send('session deleted successfully!')
+})
+
+
+//Authentication middleware
+const users = []; // In-memory user storage, replace with a database in production
+app.use(express.json()); // Middleware to parse JSON bodies
+app.post('/register',(req,res)=>{
+  const {username,password} = req.body;
+  const user = {username,password};
+  users.push(user);
+  res.send('user registered successfully!');
+})
+app.post('/login', async (req,res)=>{
+    const {username,password} = req.body;
+  const user = users.find(u => u.username === username );
+  if(!user || password!== user.password){
+    return res.status(404).send('user unauthorized!');
+  }else{
+  
+    return res.status(200).send('user logged in successfully!');
+
+
+  }
+});
+app.get('/profile',(req,res)=>{
+
+  res.send(`Welcome to your profile, ${req.session.user.username}!`);
+})
+
+
+
+
+
+
 
 
 //DATa base work here 
@@ -122,7 +200,7 @@ app.delete('/person/:name', async (req, res) => {
 // })
 
 // app.use('/things',router)
-let users = [
+let p = [
   { id: 1, name: 'John Doe', email: 'john@example.com' },
   { id: 2, name: 'Jane Doe', email: 'jane@example.com' }
 ];
