@@ -12,21 +12,23 @@ import { aboutcontroller, getid, searchcontroller, usercontroller } from './cont
 import { person } from './model/Person.js';
 import cookieparser from 'cookie-parser'
 import session from 'express-session';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 
-app.use(cookieparser())
-app.get('/',(req,res)=>{
-  console.log(req.cookies,{maxage:3600000})
-  res.cookie('name','sumit',{maxAge:3600000})
+app.use(cookieparser());
+app.get('/', (req, res) => {
+  console.log(req.cookies, { maxage: 3600000 })
+  res.cookie('name', 'sumit', { maxAge: 3600000 })
   res.send('cookies started')
 })
-app.get('/fetch',(req,res)=>{
+app.get('/fetch', (req, res) => {
   console.log(req.cookies);
   res.send('cokkies fetched');
 
 })
 //To delete the cookies 
-app.get('/removecookies',(req,res)=>{
+app.get('/removecookies', (req, res) => {
   //res.clearCookie('name'); // Corrected method name
   //use clearCookie insteas of clearCookies
   res.clearCookie('name');
@@ -36,26 +38,26 @@ app.get('/removecookies',(req,res)=>{
 
 //session middleware
 app.use(session({
-  secret :'sample-secret',
-  resave:false,
-  saveuninitialized : true
+  secret: 'sample-secret',
+  resave: false,
+  saveuninitialized: true
 }))
-app.get('/visit',(req,res)=>{
-  if(req.session.pageviews){
+app.get('/visit', (req, res) => {
+  if (req.session.pageviews) {
     req.session.pageviews++;
     res.send("You visited this page " + req.session.pageviews + " times");
-  }else{
+  } else {
     req.session.pageviews = 1;
     res.send("Welcome to this page for the first time!");
   }
 })
 //session delete
-app.get('/delete-session',(req,res)=>{
+app.get('/delete-session', (req, res) => {
   //we have two ways to delete session
   //1. req.session = null;
   //2. req.session.destroy(callback)  
 
-  req.session.destroy( (err) => {
+  req.session.destroy((err) => {
     if (err) {
       return res.status(500).send('Could not delete session');
     }
@@ -66,29 +68,78 @@ app.get('/delete-session',(req,res)=>{
 
 
 //Authentication middleware
+//using session middleware
+// const users = []; // In-memory user storage, replace with a database in production
+// app.use(express.json()); // Middleware to parse JSON bodies
+// app.post('/register',(req,res)=>{
+//   const {username,password} = req.body;
+//   const user = {username,password};
+//   users.push(user);
+//   res.send('user registered successfully!');
+// })
+// app.post('/login', async (req,res)=>{
+//     const {username,password} = req.body;
+//   const user = users.find(u => u.username === username );
+//   if(!user || password!== user.password){
+//     return res.status(404).send('user unauthorized!');
+//   }else{
+
+//     return res.status(200).send('user logged in successfully!');
+
+
+//   }
+// });
+// app.get('/profile',(req,res)=>{
+
+//   res.send(`Welcome to your profile, ${req.session.user.username}!`);
+// })
+
+
+
+
+// //Authentication middleware
+// using bcrypt for password hashing
 const users = []; // In-memory user storage, replace with a database in production
 app.use(express.json()); // Middleware to parse JSON bodies
-app.post('/register',(req,res)=>{
-  const {username,password} = req.body;
-  const user = {username,password};
+app.post('/register', async (req, res) => {
+  const { username, password } = req.body;
+  const hashpassword = await bcrypt.hash(password, 10);
+  const user = { username, password: hashpassword };
   users.push(user);
   res.send('user registered successfully!');
 })
-app.post('/login', async (req,res)=>{
-    const {username,password} = req.body;
-  const user = users.find(u => u.username === username );
-  if(!user || password!== user.password){
-    return res.status(404).send('user unauthorized!');
-  }else{
-  
-    return res.status(200).send('user logged in successfully!');
+app.post('/login', async (req, res) => {
+  try {
 
+    const { username, password } = req.body;
+    //const user = users.find(u => u.username === username && u.password === password);
+    const user = users.find(u => u.username === username);
+    // Check if user exists and password matches
+    // Use bcrypt to compare the password
+    //give the blueprint of the code
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(404).send('user unauthorized!');
+    }
 
+    const token = jwt.sign({ username }, "token@secret")
+    res.json({ token, message: 'user logged in successfully!' });
+  }
+  catch (err) {
+    console.error(err);
+    res.status(500).send('Internal Server Error');
   }
 });
-app.get('/profile',(req,res)=>{
 
-  res.send(`Welcome to your profile, ${req.session.user.username}!`);
+app.get('/profile', (req, res) => {
+
+  const token = req.header('authorization')
+  const decoded = jwt.verify(token, "token@secret");
+  if (decoded.username) {
+    res.send('welcome to your profile, ' + decoded.username + '!');
+  } else {
+    res.status(401).send('Unauthorized');
+  }
+
 })
 
 
