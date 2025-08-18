@@ -37,11 +37,11 @@ app.get('/removecookies', (req, res) => {
 
 
 //session middleware
-app.use(session({
-  secret: 'sample-secret',
-  resave: false,
-  saveuninitialized: true
-}))
+// app.use(session({
+//   secret: 'sample-secret',
+//   resave: false,
+//   saveuninitialized: true
+// }))
 app.get('/visit', (req, res) => {
   if (req.session.pageviews) {
     req.session.pageviews++;
@@ -129,6 +129,25 @@ app.post('/login', async (req, res) => {
     res.status(500).send('Internal Server Error');
   }
 });
+app.get('/app/product/:id', (req, res) => {
+  const products = [
+    { id: 1, name: 'laptop', price: 1000 },
+    { id: 2, name: 'mobile', price: 500 }
+  ];
+
+  // Get id from URL params
+  const productId = parseInt(req.params.id);
+
+  // Find the product
+  const product = products.find(p => p.id === productId);
+
+  if (product) {
+    res.json(product);
+  } else {
+    res.status(404).json({ message: 'Product not found' });
+  }
+});
+
 
 app.get('/profile', (req, res) => {
 
